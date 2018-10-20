@@ -11,46 +11,10 @@ namespace Server
     class Program
     {
         static TcpListener listener = null;
-        static TcpClient client = null;
         static List<TcpClient> clients = new List<TcpClient>();
         static List<Thread> threads = new List<Thread>();
         static Dictionary<TcpClient,string> clientsDict = new Dictionary<TcpClient,string>();
-        static void Client()
-        {
-            // lahko bi tudi listener.AcceptSocket();
-            //accept, blokirni klic. čakamo na klienta.
-            //ko se client povezuje.
-            using (NetworkStream s = client.GetStream())
-            {
-                Console.WriteLine("Connected! {0}", client.Client.RemoteEndPoint);
-                while (true)
-                {
-                    string message = null;
-                    message = Receive(s);
-                    switch (message[0])
-                    {
-                        case '0':
-                            System.Console.WriteLine("Received message: {0}", message);
-                            message = message.Remove(0, 1);
-                            clientsDict.Add(client,message);
-                            // Header for connecting
-                            Send("Welcome, " + message + " has connected!\n");
-                            break;
-                        case '1':
-                            System.Console.WriteLine("Received message: {0}", message);
-                            // Header for a message
-                            message = message.Remove(0, 1);
-                            string name;
-                            clientsDict.TryGetValue(client, out name);
-
-                            Send(name + " je rekel: " + message + "\n");
-                            break;
-                        default:
-                            break;
-                    }
-                }
-            }
-        }
+       
 
         static void Main(string[] args)
         {
@@ -67,12 +31,12 @@ namespace Server
                     {
 
                         //Waiting for a new client [blocking call]
-                        client = listener.AcceptTcpClient();
+                        TcpClient client = listener.AcceptTcpClient();
                         clients.Add(client);
                         Console.WriteLine(clients[0]);
                         Console.WriteLine("Listener accepted the client!");
-                        // New thread
-                        Thread t = new Thread(new ThreadStart(Client));
+                        // New thread for comm with the client
+                        Thread t = new Thread(() => Client(client));
                         t.Start();
                         threads.Add(t);
 
@@ -81,7 +45,6 @@ namespace Server
                     catch (Exception e)
                     {
                         Console.WriteLine(e.Message + "\n" + e.StackTrace);
-                        client.Close();
                         listener.Stop();
                     }
                 }
@@ -93,6 +56,42 @@ namespace Server
             finally
             {
                 listener.Stop();
+            }
+        }
+        static void Client(TcpClient client)
+        {
+            // lahko bi tudi listener.AcceptSocket();
+            //accept, blokirni klic. čakamo na klienta.
+            //ko se client povezuje.
+            using (NetworkStream s = client.GetStream())
+            {
+                Console.WriteLine("Connected! {0}", client.Client.RemoteEndPoint);
+                while (true)
+                {
+                    string message = null;
+                    message = Receive(s);
+                    switch (message[0])
+                    {
+                        case '0':
+                            System.Console.WriteLine("Received message: {0}", message);
+                            message = message.Remove(0, 1);
+                            clientsDict.Add(client, message);
+                            // Header for connecting
+                            Send("Welcome, " + message + " has connected!\n");
+                            break;
+                        case '1':
+                            System.Console.WriteLine("Received message: {0}", message);
+                            // Header for a message
+                            message = message.Remove(0, 1);
+                            string name;
+                            clientsDict.TryGetValue(client, out name);
+
+                            Send(name + " je rekel: " + message + "\n");
+                            break;
+                        default:
+                            break;
+                    }
+                }
             }
         }
         static string Receive(NetworkStream ns)
