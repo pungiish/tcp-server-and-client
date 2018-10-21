@@ -61,7 +61,7 @@ namespace Server
                 message = message.Remove(0, 1);
                 clientsDict.Add(client, message);
                 // Header for connecting
-                Send("Welcome, " + message + " has connected!\n");
+                Send("Welcome, [" + message + "] has connected!");
 
                 Console.WriteLine("Connected! {0}", client.Client.RemoteEndPoint);
                 while (true)
@@ -94,10 +94,7 @@ namespace Server
                                 string name;
                                 clientsDict.TryGetValue(client, out name);
 
-                                Send(name + " je rekel: " + message + "\n");
-                                break;
-                            case ' ':
-                                Console.WriteLine("empty case, client disconnected");
+                                Send(name + " je rekel: " + message);
                                 break;
                         }
                     }
