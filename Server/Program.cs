@@ -13,8 +13,8 @@ namespace Server
         static TcpListener listener = null;
         static List<TcpClient> clients = new List<TcpClient>();
         static List<Thread> threads = new List<Thread>();
-        static Dictionary<TcpClient,string> clientsDict = new Dictionary<TcpClient,string>();
-       
+        static Dictionary<TcpClient, string> clientsDict = new Dictionary<TcpClient, string>();
+
 
         static void Main(string[] args)
         {
@@ -24,29 +24,21 @@ namespace Server
                 int port = 1234;
                 listener = new TcpListener(ip, port);
                 listener.Start();
-                Console.WriteLine("LISTENER STARTED");
+                Console.WriteLine("Listening on port: {0} \nHost: {1}", port, ip);
                 while (true)
                 {
-                    try
-                    {
-
-                        //Waiting for a new client [blocking call]
-                        TcpClient client = listener.AcceptTcpClient();
-                        clients.Add(client);
-                        Console.WriteLine(clients[0]);
-                        Console.WriteLine("Listener accepted the client!");
-                        // New thread for comm with the client
-                        Thread t = new Thread(() => Client(client));
-                        t.Start();
-                        threads.Add(t);
+                    // lahko bi tudi listener.AcceptSocket();
+                    //accept, blokirni klic. čakamo na klienta.
+                    //ko se client povezuje.
+                    //Waiting for a new client [blocking call]
+                    TcpClient client = listener.AcceptTcpClient();
+                    clients.Add(client);
+                    // New thread for comm with the client
+                    Thread t = new Thread(() => Client(client));
+                    t.Start();
+                    threads.Add(t);
 
 
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine(e.Message + "\n" + e.StackTrace);
-                        listener.Stop();
-                    }
                 }
             }
             catch (SocketException e)
@@ -60,47 +52,85 @@ namespace Server
         }
         static void Client(TcpClient client)
         {
-            // lahko bi tudi listener.AcceptSocket();
-            //accept, blokirni klic. čakamo na klienta.
-            //ko se client povezuje.
+
+
             using (NetworkStream s = client.GetStream())
             {
+                string message = Receive(s);
+                System.Console.WriteLine("Received message: {0}", message);
+                message = message.Remove(0, 1);
+                clientsDict.Add(client, message);
+                // Header for connecting
+                Send("Welcome, " + message + " has connected!\n");
+
                 Console.WriteLine("Connected! {0}", client.Client.RemoteEndPoint);
                 while (true)
                 {
-                    string message = null;
+                    //if (client.Connected)
+                    //{
                     message = Receive(s);
-                    switch (message[0])
+                    if (message == null)
                     {
-                        case '0':
-                            System.Console.WriteLine("Received message: {0}", message);
-                            message = message.Remove(0, 1);
-                            clientsDict.Add(client, message);
-                            // Header for connecting
-                            Send("Welcome, " + message + " has connected!\n");
-                            break;
-                        case '1':
-                            System.Console.WriteLine("Received message: {0}", message);
-                            // Header for a message
-                            message = message.Remove(0, 1);
-                            string name;
-                            clientsDict.TryGetValue(client, out name);
+                        string name;
+                        clientsDict.TryGetValue(client, out name);
+                        clientsDict.Remove(client);
+                        Send("[" + name + "] has disconnected!");
+                        Thread.CurrentThread.Join();
+                    }
+                    //}
+                    //else
+                    //{
+                    //  Thread.CurrentThread.Join();
+                    //break;
+                    //}
+                    try
+                    {
+                        switch (message[0])
+                        {
+                            case '1':
+                                System.Console.WriteLine("Received message: {0}", message);
+                                // Header for a message
+                                message = message.Remove(0, 1);
+                                string name;
+                                clientsDict.TryGetValue(client, out name);
 
-                            Send(name + " je rekel: " + message + "\n");
-                            break;
-                        default:
-                            break;
+                                Send(name + " je rekel: " + message + "\n");
+                                break;
+                            case ' ':
+                                Console.WriteLine("empty case, client disconnected");
+                                break;
+                        }
+                    }
+                    catch (System.IndexOutOfRangeException e)
+                    {
+                        Console.WriteLine(e.Message);
+                        Console.WriteLine("Client Disconnected: " + client.Client.RemoteEndPoint);
+                        clientsDict.Remove(client);
+                        s.Close();
+                        client.Close();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
                     }
                 }
             }
         }
+
         static string Receive(NetworkStream ns)
         {
             try
             {
                 Byte[] recv = new Byte[1024];
                 int len = ns.Read(recv, 0, recv.Length);
-                return System.Text.Encoding.UTF8.GetString(recv, 0, len);
+                if (len != 0)
+                {
+                    return System.Text.Encoding.UTF8.GetString(recv, 0, len);
+                }
+                else
+                {
+                    return null;
+                }
             }
             catch (Exception e)
             {
@@ -118,9 +148,9 @@ namespace Server
                 Byte[] vs = System.Text.Encoding.UTF8.GetBytes(message);
 
 
-                foreach (TcpClient client in clients)
+                foreach (KeyValuePair<TcpClient, string> client in clientsDict)
                 {
-                    NetworkStream ns = client.GetStream();
+                    NetworkStream ns = client.Key.GetStream();
                     ns.Write(vs, 0, vs.Length);
                 }
             }
