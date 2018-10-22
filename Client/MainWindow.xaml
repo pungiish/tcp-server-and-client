@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Client"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="450" Width="800"
+        Closing="Window_Closing">
     <Grid>
         <TextBox HorizontalAlignment="Left" Height="20" Margin="187,13,0,0" TextWrapping="Wrap" Text="" Name="NAME" VerticalAlignment="Top" Width="120"/>
         <TextBox HorizontalAlignment="Left" Height="20" Margin="312,13,0,0" TextWrapping="Wrap" Name="IP" Text="127.0.0.1" VerticalAlignment="Top" Width="157"/>

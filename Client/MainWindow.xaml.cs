@@ -10,19 +10,21 @@ namespace Client
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     /// 
-    
+
     public partial class MainWindow : Window
     {
         string name;
         TcpClient client;
+        int header;
         public MainWindow()
         {
             InitializeComponent();
 
         }
-       
+
         private void Connect(string name, string ip, int port)
         {
+            header = 0;
             client = new TcpClient();
             Console.WriteLine("New Thread!");
             // Client connects to the server on the specified ip and port.
@@ -58,15 +60,6 @@ namespace Client
                 return;
                 throw;
             }
-            try
-            {
-
-            }
-            catch (System.Threading.Tasks.TaskCanceledException e)
-            {
-                Thread.CurrentThread.Join();
-                throw;
-            }
 
             this.Dispatcher.Invoke(() =>
             {
@@ -77,7 +70,7 @@ namespace Client
             // Using is a try finally, if an exception occurs it disposes of the stream.
             using (NetworkStream stream = client.GetStream())
             {
-                Send(stream, name, 0);
+                Send(stream, name, header);
                 while (true)
                 {
                     if (client.Connected)
@@ -96,6 +89,11 @@ namespace Client
 
 
         }
+        static bool checkIfGameStarted()
+        {
+            return true;
+        }
+
         private void Add_Message(string message)
         {
             try
@@ -109,6 +107,9 @@ namespace Client
             }
             catch (System.Threading.Tasks.TaskCanceledException e)
             {
+                Console.WriteLine("Threading Exception caught! {0}\n {1}", e.Message, e.StackTrace);
+                client.Close();
+                client.Dispose();
                 Thread.CurrentThread.Join();
                 throw;
             }
@@ -184,11 +185,12 @@ namespace Client
             }
             catch (System.IO.IOException e)
             {
+
                 Console.WriteLine(e.Message + "\n" + e.StackTrace);
-                MessageBoxResult mbr = MessageBox.Show("You are disconnected.");
-                Close_Connection();
+                client.Close();
                 return null;
                 throw;
+
             }
             catch (ObjectDisposedException e)
             {
@@ -213,12 +215,16 @@ namespace Client
 
                 if (e.Key == Key.Return)
                 {
+                    int HEADER = 1;
                     Console.WriteLine("enter Entered! {0}", INPUT.Text);
                     if (client.Connected)
                     {
-                        Send(client.GetStream(), INPUT.Text, 1);
+                        if(INPUT.Text == "#GAMESTART")
+                        {
+                            HEADER = 2;
+                        }
+                        Send(client.GetStream(), INPUT.Text, HEADER);
                         INPUT.Text = "";
-
                     }
                 }
             }
@@ -262,12 +268,17 @@ namespace Client
         private void Close_Connection()
         {
             client.Close();
-            Console.WriteLine(client.Connected);
             this.Dispatcher.Invoke(() =>
             {
                 btn_connect.IsEnabled = true;
                 btn_disconnect.IsEnabled = false;
             });
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            client.Close();
+            //Application.Current.MainWindow.Close();
         }
     }
 }

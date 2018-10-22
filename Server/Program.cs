@@ -1,23 +1,84 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading;
+using System.Linq;
 
 
 namespace Server
 {
 
+    public class Game
+    {
+        private List<string> WordList;
+        private string pickedWord;
+        private bool gameHasStarted = false;
+        public Game()
+        {
+            WordList = new List<string>();
+        }
+
+        public string getWord()
+        {
+            return pickedWord;
+        }
+        public bool getGameHasStarted()
+        {
+            return gameHasStarted;
+        }
+        public void setGameHasStarted(bool started)
+        {
+            gameHasStarted = started;
+        }
+        public void gameStart()
+        {
+            Console.WriteLine("Making API Call...");
+            using (var client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate }))
+            {
+                client.BaseAddress = new Uri("https://od-api.oxforddictionaries.com/api/v1/wordlist/en/domains=computing");
+                client.DefaultRequestHeaders.Add("app_id", "cf80a631");
+                client.DefaultRequestHeaders.Add("app_key", "65aced6f01559436fe1efa6cbfbc0389");
+                HttpResponseMessage response = client.GetAsync(client.BaseAddress).Result;
+                response.EnsureSuccessStatusCode();
+                string result = response.Content.ReadAsStringAsync().Result;
+                //Console.WriteLine("Result: " + result);
+                dynamic word = JsonConvert.DeserializeObject(result);
+                foreach (var name in word.results)
+                {
+                    string wordname = name.word;
+                    WordList.Add(wordname);
+                }
+            }
+        }
+        public void pickRandomWord()
+        {
+            Random r = new Random();
+            int rInt = r.Next(0, WordList.Count);
+            pickedWord = WordList[rInt].ToLower();
+            char[] ch = pickedWord.ToCharArray();
+            for (int i = 0; i < 3; i++)
+            {
+                ch[i] = '*';
+            }
+            pickedWord = new string(ch);
+        }
+
+    }
     class Program
     {
+        static Game gm = new Game();
         static TcpListener listener = null;
         static List<TcpClient> clients = new List<TcpClient>();
         static List<Thread> threads = new List<Thread>();
         static Dictionary<TcpClient, string> clientsDict = new Dictionary<TcpClient, string>();
 
-
         static void Main(string[] args)
         {
+
+
             try
             {
                 IPAddress ip = IPAddress.Parse("127.0.0.1");
@@ -50,6 +111,7 @@ namespace Server
                 listener.Stop();
             }
         }
+
         static void Client(TcpClient client)
         {
 
@@ -63,20 +125,65 @@ namespace Server
                 clientsDict.Add(client, message);
                 // Ustvari nov thread za pošiljanje?
                 Send("Welcome, [" + message + "] has connected!");
+                if (gm.getGameHasStarted())
+                {
+                    Send("Game has already started, the word we're looking for is: " + gm.getWord());
+                }
 
                 Console.WriteLine("Connected! {0}", client.Client.RemoteEndPoint);
                 while (true)
                 {
+                    string name;
+                    if (gm.getGameHasStarted())
+                    {
+                        while (gm.getGameHasStarted())
+                        {
+                            string guess = Receive(s);
+                            try
+                            {
+                                guess = guess.Remove(0, 1);
+                            }
+                            //if (guess == null || guess == "")
+                            //{
+
+                            //}
+                            catch (Exception e)
+                            {
+                                clientsDict.TryGetValue(client, out name);
+                                clientsDict.Remove(client);
+                                Send("[" + name + "] has disconnected!");
+                                Console.WriteLine("[{0}] has disconnected {1}", name, client.Client.RemoteEndPoint);
+                                Thread.CurrentThread.Join();
+                                throw;
+                            }
+                           
+                            clientsDict.TryGetValue(client, out name);
+                            if (guess == gm.getWord())
+                            {
+                                Console.WriteLine("GUESSED!");
+                                gm.pickRandomWord();
+                                Send(gm.getWord());
+                            }
+                            else if (guess == "#GAMEEND")
+                            {
+                                Console.WriteLine("GAMEENDED");
+                                gm.setGameHasStarted(false);
+                                break;
+                            }
+                                Send("[" + name + "] je ugibal: " + guess);
+
+
+                        }
+                    }
                     //if (client.Connected)
                     //{
                     message = Receive(s);
                     if (message == null || message == "")
                     {
-                        string name;
                         clientsDict.TryGetValue(client, out name);
                         clientsDict.Remove(client);
                         Send("[" + name + "] has disconnected!");
-                        Console.WriteLine("[{0}] has disconnected {1}", name ,client.Client.RemoteEndPoint);
+                        Console.WriteLine("[{0}] has disconnected {1}", name, client.Client.RemoteEndPoint);
                         Thread.CurrentThread.Join();
                     }
                     //}
@@ -87,16 +194,27 @@ namespace Server
                     //}
                     try
                     {
+                        message.Trim();
                         switch (message[0])
                         {
+
                             case '1':
                                 System.Console.WriteLine("Received message: {0}", message);
                                 // Header for a message
                                 message = message.Remove(0, 1);
-                                string name;
                                 clientsDict.TryGetValue(client, out name);
-
                                 Send(name + " je rekel: " + message);
+                                break;
+                            case '2':
+                                message = message.Remove(0, 1);
+                                clientsDict.TryGetValue(client, out name);
+                                Send("[" + name + "] je začel igro");
+                                gm.gameStart();
+                                gm.setGameHasStarted(true);
+                                gm.pickRandomWord();
+                                string word = gm.getWord();
+                                Send(word);
+                                Console.WriteLine(word);
                                 break;
                         }
                     }
@@ -116,7 +234,10 @@ namespace Server
                 }
             }
         }
-
+        static void Game(Game gm, Dictionary<TcpClient, string> clients)
+        {
+           
+        }
         static string Receive(NetworkStream ns)
         {
             try
@@ -130,7 +251,7 @@ namespace Server
             }
             catch (System.IO.IOException e)
             {
-                Console.WriteLine("The underlying socket is closed! \n {0},\n {1}", e.Message, e.StackTrace);   
+                Console.WriteLine("The underlying socket is closed! \n {0},\n {1}", e.Message, e.StackTrace);
                 return null;
 
             }
