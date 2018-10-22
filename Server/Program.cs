@@ -58,9 +58,10 @@ namespace Server
             {
                 string message = Receive(s);
                 System.Console.WriteLine("Received message: {0}", message);
+                // Header for connecting
                 message = message.Remove(0, 1);
                 clientsDict.Add(client, message);
-                // Header for connecting
+                // Ustvari nov thread za pošiljanje?
                 Send("Welcome, [" + message + "] has connected!");
 
                 Console.WriteLine("Connected! {0}", client.Client.RemoteEndPoint);
@@ -69,12 +70,13 @@ namespace Server
                     //if (client.Connected)
                     //{
                     message = Receive(s);
-                    if (message == null)
+                    if (message == null || message == "")
                     {
                         string name;
                         clientsDict.TryGetValue(client, out name);
                         clientsDict.Remove(client);
                         Send("[" + name + "] has disconnected!");
+                        Console.WriteLine("[{0}] has disconnected {1}", name ,client.Client.RemoteEndPoint);
                         Thread.CurrentThread.Join();
                     }
                     //}
@@ -105,6 +107,7 @@ namespace Server
                         clientsDict.Remove(client);
                         s.Close();
                         client.Close();
+                        Thread.CurrentThread.Join();
                     }
                     catch (Exception e)
                     {
@@ -119,15 +122,24 @@ namespace Server
             try
             {
                 Byte[] recv = new Byte[1024];
-                int len = ns.Read(recv, 0, recv.Length);
-                if (len != 0)
+                do
                 {
+                    int len = ns.Read(recv, 0, recv.Length);
                     return System.Text.Encoding.UTF8.GetString(recv, 0, len);
-                }
-                else
-                {
-                    return null;
-                }
+                } while (ns.DataAvailable);
+            }
+            catch (System.IO.IOException e)
+            {
+                Console.WriteLine("The underlying socket is closed! \n {0},\n {1}", e.Message, e.StackTrace);   
+                return null;
+
+            }
+            catch (ObjectDisposedException e)
+            {
+                Console.WriteLine("A client has disconnected!");
+                Console.WriteLine("There was an error reading from network. \n {0}, \n {1}", e.Message, e.StackTrace);
+                return null;
+
             }
             catch (Exception e)
             {
@@ -140,16 +152,22 @@ namespace Server
         {
             try
             {
-
                 //inicializiraj byte arr. Dodaj notri message v Byteih
                 Byte[] vs = System.Text.Encoding.UTF8.GetBytes(message);
-
 
                 foreach (KeyValuePair<TcpClient, string> client in clientsDict)
                 {
                     NetworkStream ns = client.Key.GetStream();
                     ns.Write(vs, 0, vs.Length);
                 }
+            }
+            catch (System.IO.IOException e)
+            {
+                Console.WriteLine("An error occurred when accessing the socket. \n {0} \n {1}", e.Message, e.StackTrace);
+            }
+            catch (ObjectDisposedException e)
+            {
+                Console.WriteLine("The Network stream is closed. \n {0} \n {1}", e.Message, e.StackTrace);
             }
             catch (InvalidOperationException e)
             {
@@ -159,6 +177,7 @@ namespace Server
             {
                 Console.WriteLine("Error while sending: {0} , {1}", e.Message, e.StackTrace);
             }
+
 
         }
 

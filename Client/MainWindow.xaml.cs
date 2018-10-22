@@ -9,6 +9,8 @@ namespace Client
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
+    /// 
+    
     public partial class MainWindow : Window
     {
         string name;
@@ -16,7 +18,9 @@ namespace Client
         public MainWindow()
         {
             InitializeComponent();
+
         }
+       
         private void Connect(string name, string ip, int port)
         {
             client = new TcpClient();
@@ -82,7 +86,10 @@ namespace Client
                     }
                     else
                     {
-
+                        stream.Dispose();
+                        client.Close();
+                        client.Dispose();
+                        Thread.CurrentThread.Join();
                     }
                 }
             };
