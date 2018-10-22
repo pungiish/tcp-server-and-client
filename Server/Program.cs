@@ -16,6 +16,7 @@ namespace Server
         private List<string> WordList;
         private string pickedWord;
         private bool gameHasStarted = false;
+
         public Game()
         {
             WordList = new List<string>();
@@ -25,14 +26,17 @@ namespace Server
         {
             return pickedWord;
         }
+
         public bool getGameHasStarted()
         {
             return gameHasStarted;
         }
+
         public void setGameHasStarted(bool started)
         {
             gameHasStarted = started;
         }
+
         public void gameStart()
         {
             Console.WriteLine("Making API Call...");
@@ -53,6 +57,7 @@ namespace Server
                 }
             }
         }
+
         public void pickRandomWord()
         {
             Random r = new Random();
@@ -65,8 +70,8 @@ namespace Server
             }
             pickedWord = new string(ch);
         }
-
     }
+
     class Program
     {
         static Game gm = new Game();
@@ -77,8 +82,6 @@ namespace Server
 
         static void Main(string[] args)
         {
-
-
             try
             {
                 IPAddress ip = IPAddress.Parse("127.0.0.1");
@@ -98,8 +101,6 @@ namespace Server
                     Thread t = new Thread(() => Client(client));
                     t.Start();
                     threads.Add(t);
-
-
                 }
             }
             catch (SocketException e)
@@ -114,8 +115,6 @@ namespace Server
 
         static void Client(TcpClient client)
         {
-
-
             using (NetworkStream s = client.GetStream())
             {
                 string message = Receive(s);
@@ -156,7 +155,6 @@ namespace Server
                                 Thread.CurrentThread.Join();
                                 throw;
                             }
-                           
                             clientsDict.TryGetValue(client, out name);
                             if (guess == gm.getWord())
                             {
@@ -171,8 +169,6 @@ namespace Server
                                 break;
                             }
                                 Send("[" + name + "] je ugibal: " + guess);
-
-
                         }
                     }
                     //if (client.Connected)
@@ -197,7 +193,6 @@ namespace Server
                         message.Trim();
                         switch (message[0])
                         {
-
                             case '1':
                                 System.Console.WriteLine("Received message: {0}", message);
                                 // Header for a message
@@ -215,6 +210,9 @@ namespace Server
                                 string word = gm.getWord();
                                 Send(word);
                                 Console.WriteLine(word);
+                                break;
+                            case '3':
+                                //case for special commands
                                 break;
                         }
                     }
@@ -234,10 +232,7 @@ namespace Server
                 }
             }
         }
-        static void Game(Game gm, Dictionary<TcpClient, string> clients)
-        {
-           
-        }
+       
         static string Receive(NetworkStream ns)
         {
             try
@@ -298,8 +293,6 @@ namespace Server
             {
                 Console.WriteLine("Error while sending: {0} , {1}", e.Message, e.StackTrace);
             }
-
-
         }
 
     }

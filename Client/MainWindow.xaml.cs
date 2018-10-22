@@ -86,12 +86,6 @@ namespace Client
                     }
                 }
             };
-
-
-        }
-        static bool checkIfGameStarted()
-        {
-            return true;
         }
 
         private void Add_Message(string message)
@@ -113,9 +107,8 @@ namespace Client
                 Thread.CurrentThread.Join();
                 throw;
             }
-
-
         }
+
         private void Send(NetworkStream stream, string message, int header)
         {
             message = message.Insert(0, header.ToString());
@@ -153,6 +146,7 @@ namespace Client
                 throw;
             }
         }
+
         private string Receive(NetworkStream ns)
         {
             // Byte array for storing the recv message.
@@ -200,26 +194,20 @@ namespace Client
                 return null;
                 throw;
             }
-
         }
-
 
         private void INPUT_Enter(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            if (string.IsNullOrEmpty(INPUT.Text))
-            {
-
-            }
+            if (string.IsNullOrEmpty(INPUT.Text)) { }
             else
             {
-
                 if (e.Key == Key.Return)
                 {
                     int HEADER = 1;
                     Console.WriteLine("enter Entered! {0}", INPUT.Text);
                     if (client.Connected)
                     {
-                        if(INPUT.Text == "#GAMESTART")
+                        if (INPUT.Text == "#GAMESTART")
                         {
                             HEADER = 2;
                         }
@@ -229,6 +217,7 @@ namespace Client
                 }
             }
         }
+
         private void Button_Connect(object sender, RoutedEventArgs e)
         {
             try
