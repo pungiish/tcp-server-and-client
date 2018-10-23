@@ -286,6 +286,9 @@ namespace Client
                 }
                 else
                 {
+                    NAME.IsReadOnly = true;
+                    IP.IsReadOnly = true;
+                    PORT.IsReadOnly = true;
                     // () = delegate
                     Thread t = new Thread(() => Connect(name, ip, port));
                     t.Start();
@@ -311,6 +314,9 @@ namespace Client
             client.Close();
             this.Dispatcher.Invoke(() =>
             {
+                NAME.IsReadOnly = false;
+                IP.IsReadOnly = false;
+                PORT.IsReadOnly = false;
                 btn_connect.IsEnabled = true;
                 btn_disconnect.IsEnabled = false;
             });
