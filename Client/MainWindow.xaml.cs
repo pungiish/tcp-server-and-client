@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
@@ -10,6 +11,48 @@ namespace Client
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     /// 
+    public class Encryption
+    {
+        private string key;
+        public Encryption()
+        {
+            key = "0110";
+        }
+
+        public string EncryptDecrypt(String text)
+        {
+            var result = new StringBuilder();
+
+            for (int c = 0; c < text.Length; c++)
+            {
+                // take next character from string
+                char character = text[c];
+
+                // cast to a uint
+                uint charCode = (uint)character;
+
+                // figure out which character to take from the key
+                int keyPosition = c % key.Length;
+
+                // take the key character
+                char keyChar = key[keyPosition];
+
+                // cast it to a uint also
+                uint keyCode = (uint)keyChar;
+
+                // perform XOR on the two character codes
+                uint combinedCode = charCode ^ keyCode;
+
+                // cast back to a char
+                char combinedChar = (char)combinedCode;
+
+                // add to the result
+                result.Append(combinedChar);
+            }
+
+            return result.ToString();
+        }
+    }
 
     public partial class MainWindow : Window
     {
@@ -111,7 +154,9 @@ namespace Client
 
         private void Send(NetworkStream stream, string message, int header)
         {
+            Encryption encryption = new Encryption();
             message = message.Insert(0, header.ToString());
+            message = ENCRYPT(message);
             // Parse the message to ASCII and store into a Byte array.
             Byte[] payload = System.Text.Encoding.UTF8.GetBytes(message);
             Console.WriteLine(payload[0]);
@@ -161,6 +206,7 @@ namespace Client
                     {
                         len = ns.Read(data, 0, data.Length);
                         string message = System.Text.Encoding.UTF8.GetString(data, 0, len);
+                        message = ENCRYPT(message);
                         Console.WriteLine("Received Message: {0}", message);
                         Add_Message(message);
                         return message;
@@ -216,6 +262,12 @@ namespace Client
                     }
                 }
             }
+        }
+
+        static string ENCRYPT(String message)
+        {
+            Encryption encryption = new Encryption();
+            return encryption.EncryptDecrypt(message);
         }
 
         private void Button_Connect(object sender, RoutedEventArgs e)

@@ -4,17 +4,60 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
-using System.Linq;
 
 
 namespace Server
 {
+    public class Encryption
+    {
+        private string key;
+        public Encryption()
+        {
+            key = "0110";
+        }
+
+        public string Encrypt(String text)
+        {
+            var result = new StringBuilder();
+
+            for (int c = 0; c < text.Length; c++)
+            {
+                // take next character from string
+                char character = text[c];
+
+                // cast to a uint
+                uint charCode = (uint)character;
+
+                // figure out which character to take from the key
+                int keyPosition = c % key.Length;
+
+                // take the key character
+                char keyChar = key[keyPosition];
+
+                // cast it to a uint also
+                uint keyCode = (uint)keyChar;
+
+                // perform XOR on the two character codes
+                uint combinedCode = charCode ^ keyCode;
+
+                // cast back to a char
+                char combinedChar = (char)combinedCode;
+
+                // add to the result
+                result.Append(combinedChar);
+            }
+
+            return result.ToString();
+        }
+    }
 
     public class Game
     {
         private List<string> WordList;
         private string pickedWord;
+        private string hiddenWord;
         private bool gameHasStarted = false;
 
         public Game()
@@ -25,6 +68,11 @@ namespace Server
         public string getWord()
         {
             return pickedWord;
+        }
+
+        public string getHiddenWord()
+        {
+            return hiddenWord;
         }
 
         public bool getGameHasStarted()
@@ -66,9 +114,10 @@ namespace Server
             char[] ch = pickedWord.ToCharArray();
             for (int i = 0; i < 3; i++)
             {
-                ch[i] = '*';
+                rInt = r.Next(0, pickedWord.Length);
+                ch[rInt] = '*';
             }
-            pickedWord = new string(ch);
+            hiddenWord = new string(ch);
         }
     }
 
@@ -126,7 +175,7 @@ namespace Server
                 Send("Welcome, [" + message + "] has connected!");
                 if (gm.getGameHasStarted())
                 {
-                    Send("Game has already started, the word we're looking for is: " + gm.getWord());
+                    Send("Game has already started, the word we're looking for is: " + gm.getHiddenWord());
                 }
 
                 Console.WriteLine("Connected! {0}", client.Client.RemoteEndPoint);
@@ -160,7 +209,7 @@ namespace Server
                             {
                                 Console.WriteLine("GUESSED!");
                                 gm.pickRandomWord();
-                                Send(gm.getWord());
+                                Send(gm.getHiddenWord());
                             }
                             else if (guess == "#GAMEEND")
                             {
@@ -168,7 +217,7 @@ namespace Server
                                 gm.setGameHasStarted(false);
                                 break;
                             }
-                                Send("[" + name + "] je ugibal: " + guess);
+                            Send("[" + name + "] je ugibal: " + guess);
                         }
                     }
                     //if (client.Connected)
@@ -207,7 +256,7 @@ namespace Server
                                 gm.gameStart();
                                 gm.setGameHasStarted(true);
                                 gm.pickRandomWord();
-                                string word = gm.getWord();
+                                string word = gm.getHiddenWord();
                                 Send(word);
                                 Console.WriteLine(word);
                                 break;
@@ -232,7 +281,7 @@ namespace Server
                 }
             }
         }
-       
+
         static string Receive(NetworkStream ns)
         {
             try
@@ -241,7 +290,9 @@ namespace Server
                 do
                 {
                     int len = ns.Read(recv, 0, recv.Length);
-                    return System.Text.Encoding.UTF8.GetString(recv, 0, len);
+                    string message = System.Text.Encoding.UTF8.GetString(recv, 0, len);
+                    message = ENCRYPT(message);
+                    return message;
                 } while (ns.DataAvailable);
             }
             catch (System.IO.IOException e)
@@ -269,8 +320,10 @@ namespace Server
             try
             {
                 //inicializiraj byte arr. Dodaj notri message v Byteih
+                Console.WriteLine(message);
+                message = ENCRYPT(message);
                 Byte[] vs = System.Text.Encoding.UTF8.GetBytes(message);
-
+                Console.WriteLine(message);
                 foreach (KeyValuePair<TcpClient, string> client in clientsDict)
                 {
                     NetworkStream ns = client.Key.GetStream();
@@ -293,6 +346,12 @@ namespace Server
             {
                 Console.WriteLine("Error while sending: {0} , {1}", e.Message, e.StackTrace);
             }
+        }
+
+        static string ENCRYPT(String message)
+        {
+            Encryption encryption = new Encryption();
+            return encryption.Encrypt(message);
         }
 
     }
