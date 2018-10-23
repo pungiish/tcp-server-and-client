@@ -125,10 +125,9 @@ namespace Server
     {
         static Game gm = new Game();
         static TcpListener listener = null;
-        static List<TcpClient> clients = new List<TcpClient>();
         static List<Thread> threads = new List<Thread>();
         static Dictionary<TcpClient, string> clientsDict = new Dictionary<TcpClient, string>();
-
+        static Dictionary <TcpClient, int> scores = new Dictionary<TcpClient, int>();
         static void Main(string[] args)
         {
             try
@@ -145,7 +144,6 @@ namespace Server
                     //ko se client povezuje.
                     //Waiting for a new client [blocking call]
                     TcpClient client = listener.AcceptTcpClient();
-                    clients.Add(client);
                     // New thread for comm with the client
                     Thread t = new Thread(() => Client(client));
                     t.Start();
@@ -171,10 +169,10 @@ namespace Server
                 // Header for connecting
                 message = message.Remove(0, 1);
                 clientsDict.Add(client, message);
-                // Ustvari nov thread za pošiljanje?
+                scores.Add(client, 0);
                 Send("Welcome, [" + message + "] has connected!");
                 if (gm.getGameHasStarted())
-                {
+                { 
                     Send("Game has already started, the word we're looking for is: " + gm.getHiddenWord());
                 }
 
@@ -199,6 +197,7 @@ namespace Server
                             {
                                 clientsDict.TryGetValue(client, out name);
                                 clientsDict.Remove(client);
+                                scores.Remove(client);
                                 Send("[" + name + "] has disconnected!");
                                 Console.WriteLine("[{0}] has disconnected {1}", name, client.Client.RemoteEndPoint);
                                 Thread.CurrentThread.Join();
@@ -207,9 +206,19 @@ namespace Server
                             clientsDict.TryGetValue(client, out name);
                             if (guess == gm.getWord())
                             {
+                                scores.TryGetValue(client, out int value);
+                                scores[client] = value + 1;
                                 Console.WriteLine("GUESSED!");
+                                Send("[" + name + "] found out the word was: " + gm.getWord());
+                                StringBuilder stringBuilder = new StringBuilder();
+                                foreach (var clientName in clientsDict)
+                                {
+                                    stringBuilder.AppendLine("[" + clientName.Value + "] Score: " + scores[clientName.Key] );
+                                }
+                                Send(stringBuilder.ToString());
                                 gm.pickRandomWord();
                                 Send(gm.getHiddenWord());
+                                Console.WriteLine(gm.getWord());
                             }
                             else if (guess == "#GAMEEND")
                             {
@@ -217,7 +226,10 @@ namespace Server
                                 gm.setGameHasStarted(false);
                                 break;
                             }
-                            Send("[" + name + "] je ugibal: " + guess);
+                            else
+                            {
+                                Send("[" + name + "] je ugibal: " + guess);
+                            }
                         }
                     }
                     //if (client.Connected)
@@ -227,6 +239,7 @@ namespace Server
                     {
                         clientsDict.TryGetValue(client, out name);
                         clientsDict.Remove(client);
+                        scores.Remove(client);
                         Send("[" + name + "] has disconnected!");
                         Console.WriteLine("[{0}] has disconnected {1}", name, client.Client.RemoteEndPoint);
                         Thread.CurrentThread.Join();
@@ -257,8 +270,8 @@ namespace Server
                                 gm.setGameHasStarted(true);
                                 gm.pickRandomWord();
                                 string word = gm.getHiddenWord();
+                                Console.WriteLine(gm.getWord());
                                 Send(word);
-                                Console.WriteLine(word);
                                 break;
                             case '3':
                                 //case for special commands
@@ -270,6 +283,7 @@ namespace Server
                         Console.WriteLine(e.Message);
                         Console.WriteLine("Client Disconnected: " + client.Client.RemoteEndPoint);
                         clientsDict.Remove(client);
+                        scores.Remove(client);
                         s.Close();
                         client.Close();
                         Thread.CurrentThread.Join();
