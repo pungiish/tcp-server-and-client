@@ -260,7 +260,39 @@ namespace Server
                                 // Header for a message
                                 message = message.Remove(0, 1);
                                 clientsDict.TryGetValue(client, out name);
-                                Send(name + " je rekel: " + message);
+                                if(gm.getGameHasStarted())
+                                {
+                                    if (message == gm.getWord())
+                                    {
+                                        scores.TryGetValue(client, out int value);
+                                        scores[client] = value + 1;
+                                        Console.WriteLine("GUESSED!");
+                                        Send("[" + name + "] found out the word was: " + gm.getWord());
+                                        StringBuilder stringBuilder = new StringBuilder();
+                                        foreach (var clientName in clientsDict)
+                                        {
+                                            stringBuilder.AppendLine("[" + clientName.Value + "] Score: " + scores[clientName.Key]);
+                                        }
+                                        Send(stringBuilder.ToString());
+                                        gm.pickRandomWord();
+                                        Send(gm.getHiddenWord());
+                                        Console.WriteLine(gm.getWord());
+                                    }
+                                    else if (message == "#GAMEEND")
+                                    {
+                                        Console.WriteLine("GAMEENDED");
+                                        gm.setGameHasStarted(false);
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        Send("[" + name + "] je ugibal: " + message);
+                                    }
+                                }
+                                else
+                                {
+                                    Send(name + " je rekel: " + message);
+                                }
                                 break;
                             case '2':
                                 message = message.Remove(0, 1);
