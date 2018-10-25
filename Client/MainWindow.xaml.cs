@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
@@ -11,48 +10,6 @@ namespace Client
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     /// 
-    public class Encryption
-    {
-        private string key;
-        public Encryption()
-        {
-            key = "0110";
-        }
-
-        public string EncryptDecrypt(String text)
-        {
-            var result = new StringBuilder();
-
-            for (int c = 0; c < text.Length; c++)
-            {
-                // take next character from string
-                char character = text[c];
-
-                // cast to a uint
-                uint charCode = (uint)character;
-
-                // figure out which character to take from the key
-                int keyPosition = c % key.Length;
-
-                // take the key character
-                char keyChar = key[keyPosition];
-
-                // cast it to a uint also
-                uint keyCode = (uint)keyChar;
-
-                // perform XOR on the two character codes
-                uint combinedCode = charCode ^ keyCode;
-
-                // cast back to a char
-                char combinedChar = (char)combinedCode;
-
-                // add to the result
-                result.Append(combinedChar);
-            }
-
-            return result.ToString();
-        }
-    }
 
     public partial class MainWindow : Window
     {
@@ -69,7 +26,6 @@ namespace Client
         {
             header = 0;
             client = new TcpClient();
-            Console.WriteLine("New Thread!");
             // Client connects to the server on the specified ip and port.
             try
             {
@@ -148,7 +104,6 @@ namespace Client
                 client.Close();
                 client.Dispose();
                 Thread.CurrentThread.Join();
-                throw;
             }
         }
 
@@ -173,22 +128,18 @@ namespace Client
                 Console.WriteLine(e.Message + "\n" + e.StackTrace);
                 MessageBoxResult mbr = MessageBox.Show("The message size is too big for the buffer.");
                 return;
-                throw;
             }
             catch (System.IO.IOException e)
             {
                 Console.WriteLine(e.Message + "\n" + e.StackTrace);
                 MessageBoxResult mbr = MessageBox.Show("An error occurred when accessing the socket.");
-                //client.GetStream().Flush();
                 return;
-                throw;
             }
             catch (ObjectDisposedException e)
             {
                 Console.WriteLine(e.Message + "\n" + e.StackTrace);
                 MessageBoxResult mbr = MessageBox.Show("There was a failure reading from the network.");
                 return;
-                throw;
             }
         }
 
@@ -230,7 +181,6 @@ namespace Client
                 Close_Connection();
                 MessageBoxResult mbr = MessageBox.Show("TCP Client is closed.");
                 return null;
-                throw;
 
             }
             catch (ObjectDisposedException e)
@@ -239,9 +189,15 @@ namespace Client
                 MessageBoxResult mbr = MessageBox.Show("There was a failure reading from the network.");
                 Close_Connection();
                 return null;
-                throw;
             }
         }
+
+        static string ENCRYPT(String message)
+        {
+            Encryption encryption = new Encryption();
+            return encryption.EncryptDecrypt(message);
+        }
+
 
         private void INPUT_Enter(object sender, System.Windows.Input.KeyEventArgs e)
         {
@@ -265,11 +221,6 @@ namespace Client
             }
         }
 
-        static string ENCRYPT(String message)
-        {
-            Encryption encryption = new Encryption();
-            return encryption.EncryptDecrypt(message);
-        }
 
         private void Button_Connect(object sender, RoutedEventArgs e)
         {
@@ -310,6 +261,7 @@ namespace Client
         {
             Close_Connection();
         }
+
         private void Close_Connection()
         {
             client.Close();

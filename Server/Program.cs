@@ -1,8 +1,6 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -10,116 +8,6 @@ using System.Threading;
 
 namespace Server
 {
-    public class Encryption
-    {
-        private string key;
-        public Encryption()
-        {
-            key = "0110";
-        }
-
-        public string Encrypt(String text)
-        {
-            var result = new StringBuilder();
-
-            for (int c = 0; c < text.Length; c++)
-            {
-                // take next character from string
-                char character = text[c];
-
-                // cast to a uint
-                uint charCode = (uint)character;
-
-                // figure out which character to take from the key
-                int keyPosition = c % key.Length;
-
-                // take the key character
-                char keyChar = key[keyPosition];
-
-                // cast it to a uint also
-                uint keyCode = (uint)keyChar;
-
-                // perform XOR on the two character codes
-                uint combinedCode = charCode ^ keyCode;
-
-                // cast back to a char
-                char combinedChar = (char)combinedCode;
-
-                // add to the result
-                result.Append(combinedChar);
-            }
-
-            return result.ToString();
-        }
-    }
-
-    public class Game
-    {
-        private List<string> WordList;
-        private string pickedWord;
-        private string hiddenWord;
-        private bool gameHasStarted = false;
-
-        public Game()
-        {
-            WordList = new List<string>();
-        }
-
-        public string getWord()
-        {
-            return pickedWord;
-        }
-
-        public string getHiddenWord()
-        {
-            return hiddenWord;
-        }
-
-        public bool getGameHasStarted()
-        {
-            return gameHasStarted;
-        }
-
-        public void setGameHasStarted(bool started)
-        {
-            gameHasStarted = started;
-        }
-
-        public void gameStart()
-        {
-            Console.WriteLine("Making API Call...");
-            using (var client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate }))
-            {
-                client.BaseAddress = new Uri("https://od-api.oxforddictionaries.com/api/v1/wordlist/en/domains=computing");
-                client.DefaultRequestHeaders.Add("app_id", "cf80a631");
-                client.DefaultRequestHeaders.Add("app_key", "65aced6f01559436fe1efa6cbfbc0389");
-                HttpResponseMessage response = client.GetAsync(client.BaseAddress).Result;
-                response.EnsureSuccessStatusCode();
-                string result = response.Content.ReadAsStringAsync().Result;
-                //Console.WriteLine("Result: " + result);
-                dynamic word = JsonConvert.DeserializeObject(result);
-                foreach (var name in word.results)
-                {
-                    string wordname = name.word;
-                    WordList.Add(wordname);
-                }
-            }
-        }
-
-        public void pickRandomWord()
-        {
-            Random r = new Random();
-            int rInt = r.Next(0, WordList.Count);
-            pickedWord = WordList[rInt].ToLower();
-            char[] ch = pickedWord.ToCharArray();
-            for (int i = 0; i < 3; i++)
-            {
-                rInt = r.Next(0, pickedWord.Length);
-                ch[rInt] = '*';
-            }
-            hiddenWord = new string(ch);
-        }
-    }
 
     class Program
     {
@@ -189,10 +77,6 @@ namespace Server
                             {
                                 guess = guess.Remove(0, 1);
                             }
-                            //if (guess == null || guess == "")
-                            //{
-
-                            //}
                             catch (Exception e)
                             {
                                 clientsDict.TryGetValue(client, out name);
@@ -232,8 +116,6 @@ namespace Server
                             }
                         }
                     }
-                    //if (client.Connected)
-                    //{
                     message = Receive(s);
                     if (message == null || message == "")
                     {
@@ -244,12 +126,6 @@ namespace Server
                         Console.WriteLine("[{0}] has disconnected {1}", name, client.Client.RemoteEndPoint);
                         Thread.CurrentThread.Join();
                     }
-                    //}
-                    //else
-                    //{
-                    //  Thread.CurrentThread.Join();
-                    //break;
-                    //}
                     try
                     {
                         message.Trim();
@@ -397,7 +273,7 @@ namespace Server
         static string ENCRYPT(String message)
         {
             Encryption encryption = new Encryption();
-            return encryption.Encrypt(message);
+            return encryption.EncryptDecrypt(message);
         }
 
     }
