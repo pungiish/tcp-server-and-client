@@ -227,7 +227,8 @@ namespace Client
             {
 
                 Console.WriteLine(e.Message + "\n" + e.StackTrace);
-                client.Close();
+                Close_Connection();
+                MessageBoxResult mbr = MessageBox.Show("TCP Client is closed.");
                 return null;
                 throw;
 
